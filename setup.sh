@@ -543,9 +543,13 @@ ehthumbs.db
 Thumbs.db
 EOT
 
+# Git operations
+echo "Handling git operations..."
+
 # Initialize git repo if not already initialized
 if [ ! -d .git ]; then
   git init
+  echo "Git repository initialized"
 fi
 
 # Configure git (optional - uncomment and modify if needed)
@@ -555,18 +559,63 @@ fi
 # Add remote if not already added
 if ! git remote | grep -q origin; then
   git remote add origin https://github.com/mauaksu/crosssign-tool.git
+  echo "Remote origin added"
+else
+  echo "Remote origin already exists"
+fi
+
+# First, fetch from remote to see what's there
+echo "Fetching from remote repository..."
+git fetch origin
+
+# Check if main branch exists remotely
+if git ls-remote --heads origin main | grep -q main; then
+  echo "Main branch exists on remote"
+  
+  # Checkout or create main branch
+  if git branch | grep -q "main"; then
+    git checkout main
+  else
+    git checkout -b main
+  fi
+  
+  # Pull with --allow-unrelated-histories to merge unrelated histories
+  echo "Pulling existing content from remote repository..."
+  git pull origin main --allow-unrelated-histories
+  
+  if [ $? -ne 0 ]; then
+    echo "Failed to pull from remote. This might be due to conflicts."
+    echo "Proceeding with a force push (this will overwrite remote content)."
+    # Note: Uncomment the next line only if you're sure you want to force push
+    # git push -f origin main
+    echo "IMPORTANT: Force push commented out for safety. If you're sure you want to overwrite remote content, edit this script and uncomment the line."
+    exit 1
+  fi
+else
+  echo "Main branch doesn't exist on remote, creating it"
+  git checkout -b main
 fi
 
 # Add all files to git
+echo "Adding files to git..."
 git add .
 
 # Commit changes
-git commit -m "Initial implementation of CrossSign web interface"
+echo "Committing changes..."
+git commit -m "Implementation of CrossSign web interface"
 
-# Push to GitHub (you'll need to enter your credentials)
-git push -u origin main
+# Push to GitHub (with force option if needed - use carefully!)
+echo "Pushing to GitHub..."
+git push origin main
 
-echo "All files have been created and pushed to GitHub repository."
+if [ $? -ne 0 ]; then
+  echo "Regular push failed. If you're sure you want to overwrite remote content, run:"
+  echo "git push -f origin main"
+else
+  echo "Successfully pushed to GitHub!"
+fi
+
+echo "All files have been created and push attempted to GitHub repository."
 echo "Next steps:"
 echo "1. npm install"
 echo "2. docker build -t crosssign ."
